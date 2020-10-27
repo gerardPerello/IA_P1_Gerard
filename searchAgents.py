@@ -82,7 +82,7 @@ class SearchAgent(Agent):
             raise AttributeError(fn + ' is not a search function in search.py.')
         func = getattr(search, fn)
         if 'heuristic' not in func.__code__.co_varnames:
-            print('[SearchAgent] using function ' + fn)
+            #print('[SearchAgent] using function ' + fn)
             self.searchFunction = func
         else:
             if heuristic in globals().keys():
@@ -99,7 +99,7 @@ class SearchAgent(Agent):
         if prob not in globals().keys() or not prob.endswith('Problem'):
             raise AttributeError(prob + ' is not a search problem type in SearchAgents.py.')
         self.searchType = globals()[prob]
-        print('[SearchAgent] using problem type ' + prob)
+        #print('[SearchAgent] using problem type ' + prob)
 
     def registerInitialState(self, state):
         """
@@ -278,6 +278,14 @@ class CornersProblem(search.SearchProblem):
     You must select a suitable state space and successor function
     """
 
+    """
+    @author Gerard
+    Concretament he afegit 4 lines de codi en la inicialització del problema, ja que dades les condicions d'aquest
+    es necessari guardar el nombre de corners visitats en tot moment. Genero aquesta variable com a cornerVisits, la qual 
+    es una tupla de 4 booleans ordenats segons l'ordre en que estan ordenats els corners a la variable corner, d'aquesta manera
+    mai perdrem el registre de quin es cada un. Aquesta variable es guardada al primer estat juntament amb la posició, ja que es 
+    una informació necessaria per acabar el problema
+    """
     def __init__(self, startingGameState):
         """
         Stores the walls, pacman's starting position and corners.
@@ -294,10 +302,13 @@ class CornersProblem(search.SearchProblem):
         # in initializing the problem
         "*** YOUR CODE HERE ***"
         cornerVists = tuple((self.startingPosition == corner for corner in self.corners))
-        firstState = (self.startingPosition, cornerVists)
-        self.startState = firstState
+        self.startState = (self.startingPosition, cornerVists)
         self.costFn = lambda x: 1
 
+    """
+    @author Gerard
+    L'unic que hem de retornar es l'estat inicial del problema, que es una variable d'aquest.
+    """
     def getStartState(self):
         """
         Returns the start state (in your state space, not the full Pacman state
@@ -306,6 +317,12 @@ class CornersProblem(search.SearchProblem):
         "*** YOUR CODE HERE ***"
         return self.startState
 
+    """
+    @author Gerard
+    Condició de victoria del problema. En cas que hi hagi algun dels elements de la tupla que guarda si hem visitat 
+    totes les cantonades en False (es a dir, que hi ha alguna cantonada sense visitar, no guanyarem. En cas que no hi hagi cap False,
+    guanyarem.
+    """
     def isGoalState(self, state):
         """
         Returns whether this search state is a goal state of the problem.
@@ -317,6 +334,16 @@ class CornersProblem(search.SearchProblem):
                 cont += 1
         return cont == 0
 
+    """
+    @author Gerard
+    La funció getSuccessors ha de generar els estats fills d'un estat actual. Segons la dinamica d'aquest problema
+    els estats han de tenir la posició on es troben i la tupla de booleans on es guarda si s'han visitat totes les cantonades
+    Aquesta funció doncs genera les dues coses. Per a fer-ho, realitzem un for del zip entre les posicions de les cantonades
+    i els estats booleans del problema respecte aquestes i guardem el boolea tal y com esta en la llista o en cas que la següent 
+    posició sigui una de les cantonades que no ha estat vista, li canviem el False per un True. A continuació es converteix aquesta
+    llista en una tupla i per acabar es crear l'estat, que correspon de la posició del estat en primer lloc, i en segon la tupla de
+    booleans que hem creat.
+    """
     def getSuccessors(self, state):
         """
         Returns successor states, the actions they require, and a cost of 1.
@@ -362,12 +389,61 @@ class CornersProblem(search.SearchProblem):
             if self.walls[x][y]: return 999999
         return len(actions)
 
+"""
+@author Gerard
+Funció que ens permet realitzar la distancia de Manhattan entre dos posicions cualsevols, ens serveix d'ajuda en la funció
+de CornersHeuristic.
+"""
 def manhattanHeuristic2pos(position, position2, info={}):
 
     xy1 = position
     xy2 = position2
     return abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
 
+"""
+@author Gerard
+En la següent funció es crea la Heuristica del problema dels Corners. Com que els mapes son rectangulars i les seves cantonades son els objectius,
+la heuristica del problema es pot intuir que tindra bastant a veure amb la distancia Manhattan. El que es fa es agafar les mesures minimes entre cantonades, ja siguin el shortSide,
+el largeSide i el diagonalSide, que basicament son les distancies Manhattan entre cantonades, depenen entre quines sigui.
+    longside    
+-----------------
+|               |
+|               | shortside     I el diagonalSide es la hipotenusa del triangle rectangle entre longside i shortside.
+|               |
+|               |
+-----------------
+Al començament de la funció, es guarden en una variable quines son exactament les cantonades que falten per visitar.
+
+Posteriorment, es crea una lista mitjançant una list comprehesion de les distancies Manhattan entre la posicio actual i les cantonades que falten per visitar.
+
+Es guarda la cantonada que esta mes aprop a cornerMin i la distancia fins a aquesta a distanciaMinima.
+
+A continuació s'entra en una serie de casos, donat que segons si queden mes o menys cantonades a visitar, la heuristica ha de ser diferent, ja que ja no cal un cami minim a recorrer tant gran quan
+queda per visitar 1 cantonada que quan en queden 4.
+
+En cas que quedin 4 cantonades, la heuristica serà de la distancia minima a la cantonada minima mes 2 cops el shortside i 1 cop el longside.
+En cas que quedin 3 cantonades, la heuristica serà la distancia minima a la cantonada minima mes:
+    Com que queden 3 cantonades, excepte rotacions del rectangle sempre podem veure les cantonades així: A----------B
+                                                                                                                    |
+                                                                                                                    |
+                                                                                                                    |
+                                                                                                                    C
+    I el la cantonada D seria la que ja esta visitada. Aleshores en cas que la cantonada minima sigui A o C, sumarem a la distancia minima un longside i un shortside.
+    En cas que la cantonada minima sigui B sumarem un shortside i un diagonalSide, això es per les propietats fisiques del cami minim que poden recorre segons cada posició.
+En cas que quedin 2 cantonades, la heuristica serà la distancia minima a la cantonada minima mes la distancia manhattan entre les dos cantonades que falten.
+En cas que quedi 1 cantonada, la heuristica sera simplement la distancia minima a la cantonada minima.
+
+D'aquesta manera es soporten tots els casos y la heuristica es admissible i consistent.
+
+
+############
+        #Heuristica alternativa, mirem el cami mes llarg.
+    if len(cantonadesNoVisitades) != 0:
+
+        manhattanDistanciesCorners = [manhattanHeuristic2pos(statePosition,i) for i in cantonadesNoVisitades]
+        heuristica += max(manhattanDistanciesCorners)
+############
+"""
 def cornersHeuristic(state, problem):
     """
     A heuristic for the CornersProblem that you defined.
@@ -392,22 +468,8 @@ def cornersHeuristic(state, problem):
     diagonalSide = math.sqrt(shortSide^2+largeSide^2)
 
     cantonadesNoVisitades = [corners[i] for i in range(4) if not stateCornersTuple[i]]
-    """
-        #Heuristica 1, mirem el cami mes llarg.
-    if len(cantonadesNoVisitades) != 0:
 
-        manhattanDistanciesCorners = [manhattanHeuristic2pos(statePosition,i) for i in cantonadesNoVisitades]
-        heuristica += max(manhattanDistanciesCorners)
-    """
-    """
-    while len(cantonadesNoVisitades) != 0:
-        manhattanDistanciesCorners = [(manhattanHeuristic2pos(statePosition, i),i) for i in cantonadesNoVisitades]
-        distanciaMinima, cornerMinim = min(manhattanDistanciesCorners)
-        heuristica += distanciaMinima
-        statePosition = cornerMinim
-        cantonadesNoVisitades.remove(cornerMinim)
-    
-    """
+
     if len(cantonadesNoVisitades) != 0:
         manhattanDistanciesCorners = [(manhattanHeuristic2pos(statePosition, i),i) for i in cantonadesNoVisitades]
         distanciaMinima, cornerMin = min(manhattanDistanciesCorners)
@@ -492,6 +554,33 @@ class AStarFoodSearchAgent(SearchAgent):
         self.searchFunction = lambda prob: search.aStarSearch(prob, foodHeuristic)
         self.searchType = FoodSearchProblem
 
+"""
+@author Gerard
+La heuristica del problema del menjar, a diferencia de la heuristica dels Corners, no pot utilitzar distanciaManhattan perque hi ha masses objectius simultanis i no seria una distancia acurada, per 
+això en aquest cas farem servir la mazeDistance.
+
+El primer que es fa en aquesta funció es guardar o crear les variables que es necessiten per a començar com poden ser: statePosition que guarda la posició actual del pacman, stateFoodGrid que es el Grid d'on es troba
+tot el menjar que falta per a consumir, la stateFoodLlista que s'extreu de la stateFoodGrid i es una llista on estan les coordenades de tot el menjar que falta per a ser consumit, la heuristica del problema que de moment es 
+0, i les dues llistes que ens ajudaran a donarli un valor a aquesta heuristica: la minFood, llista que guarda les distanciesMaze entre la posicio actual i els diferents menjars que falten per a ser consumits i la llista
+distanciesEntreFood que com be diu el seu nom, guarda les distancies entre els diferents menjars del mapa. 
+
+Aleshores, per a començar a guardar valors es realitza un doble for. Per a cada menjar que hi ha a la llista de menjars a ser consumits, es mira si es te guardada la informació de la distancia entre aquests al diccionari
+del problema, en cas que no ho estigui es calcula amb la funcio mazeDistance i es guarda al diccionari. Posteriorment aquesta informació es guarda a la llista de minFood. A continuació,
+per aquest menjar es calcula la distancia entre ell i tots els demes menjars del mapa, cada una d'aquestes informacions es guarda en el diccionari del problema i posteriorment a la llista distanciesEntreFood.
+
+Un cop es tot això es retorna la distancia minima entre la posicio actual i la fruita mes propera, cosa que es fa fent un min en la llista minfood,
+mes la distancia maxima entre dos menjars del mapa, cosa que es fa fent un max en la llista distanciesEntreFood
+
+Podem veure que la distancia a la fruita mes propera mes la distancia entre les dos fruites mes llunyanes es una heuristica consistent.
+
+#################
+        #9551 expanded
+        if len(statefoodLlista) != 0:
+            manhattanDistanciesFood = [manhattanHeuristic2pos(statePosition, i) for i in statefoodLlista]
+            heuristica += max(manhattanDistanciesFood)
+#################
+
+"""
 def foodHeuristic(state, problem):
     """
     Your heuristic for the FoodSearchProblem goes here.
@@ -520,37 +609,73 @@ def foodHeuristic(state, problem):
     Subsequent calls to this heuristic can access
     problem.heuristicInfo['wallCount']
     """
+
     statePosition, statefoodGrid = state
-    "*** YOUR CODE HERE ***"
     statefoodLlista = statefoodGrid.asList()
     heuristica = 0
-
-    """
-        #9551 expanded
-        if len(statefoodLlista) != 0:
-            manhattanDistanciesFood = [manhattanHeuristic2pos(statePosition, i) for i in statefoodLlista]
-            heuristica += max(manhattanDistanciesFood)
-    """
-    a = ClosestDotSearchAgent()
     minFood = []
-    distanciesFood = [0]
+    distanciesEntreFood = [0]
+
 
     for food in statefoodLlista:
         if (statePosition,food) not in problem.heuristicInfo:
             problem.heuristicInfo[(statePosition, food)] = mazeDistance(statePosition, food, problem.walls, state)
+            problem.heuristicInfo[(food,statePosition)] = problem.heuristicInfo[(statePosition,food)]
         minFood.append(problem.heuristicInfo[(statePosition,food)])
         for mesFood in statefoodLlista:
             if(food != mesFood):
                 if (food, mesFood) not in problem.heuristicInfo:
                     problem.heuristicInfo[(food, mesFood)] = mazeDistance(food,mesFood,problem.walls,state)
-                distanciesFood.append(problem.heuristicInfo[(food, mesFood)])
-    #print(minFood)
-    #print(distanciesFood)
+                    problem.heuristicInfo[(mesFood, food)] = problem.heuristicInfo[(food, mesFood)]
+                distanciesEntreFood.append(problem.heuristicInfo[(food, mesFood)])
+
     if len(minFood) != 0:
-        heuristica += (min(minFood)+max(distanciesFood))
+        heuristica += (min(minFood)+max(distanciesEntreFood))
     else:
-        heuristica += max(distanciesFood)
+        heuristica += max(distanciesEntreFood)
     return heuristica
+
+"""
+@author Gerard
+Funció que recolza la foodHeuristic, estaba ja creada, pero l'he hagut de modificar per a poder treballar amb ella donat que no sabia com passarli el gameState des de la funcio foodHeuristic,
+ara rep les walls i l'state en que es troba l'agent. Aleshores crida a un problema de busqueda per a que trobi la distancia entre dues posicions amb la longitud del bfs que retorna aquest problema..
+"""
+def mazeDistance(point1, point2, wallsS, state):
+    """
+    Returns the maze distance between any two points, using the search functions
+    you have already built. The gameState can be any game state -- Pacman's
+    position in that state is ignored.
+
+    Example usage: mazeDistance( (2,4), (5,6), gameState)
+
+    This might be a useful helper function for your ApproximateSearchAgent.
+    """
+    x1, y1 = point1
+    x2, y2 = point2
+    walls = wallsS
+    assert not walls[x1][y1], 'point1 is a wall: ' + str(point1)
+    assert not walls[x2][y2], 'point2 is a wall: ' + str(point2)
+    prob = especialPositionSearchProblem(walls,state[0],state[1],len(state[1].asList())!=0, start=point1, goal=point2, warn=False, visualize=False)
+    return len(search.bfs(prob))
+
+"""
+@author Gerard
+Classe que hereda de PositionSearchProblem pero que disposa d'un altre init per a poder inicialitzar-lo amb les dades que es tenen a foodHeuristic. Totes les demes funcions que te son les de 
+PositionSearchProblem, per tant pot fer les mateixes coses que ell. 
+"""
+class especialPositionSearchProblem(PositionSearchProblem):
+
+    def __init__(self,walls,pacmanPosition,food,hasFood,start,goal,warn=True,visualize=True):
+        self.food = food
+        self.hasFood = hasFood
+        self.goal = goal
+        # Store info for the PositionSearchProblem (no need to change this)
+        self.walls = walls
+        self.startState = start
+        self.visualize = visualize
+        self.warn = warn
+        self.costFn = lambda x: 1
+        self._visited, self._visitedlist, self._expanded = {}, [], 0  # DO NOT CHANGE
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
@@ -619,34 +744,4 @@ class AnyFoodSearchProblem(PositionSearchProblem):
 
         return self.food[x][y]
 
-def mazeDistance(point1, point2, wallsS, state):
-    """
-    Returns the maze distance between any two points, using the search functions
-    you have already built. The gameState can be any game state -- Pacman's
-    position in that state is ignored.
 
-    Example usage: mazeDistance( (2,4), (5,6), gameState)
-
-    This might be a useful helper function for your ApproximateSearchAgent.
-    """
-    x1, y1 = point1
-    x2, y2 = point2
-    walls = wallsS
-    assert not walls[x1][y1], 'point1 is a wall: ' + str(point1)
-    assert not walls[x2][y2], 'point2 is a wall: ' + str(point2)
-    prob = especialPositionSearchProblem(walls,state[0],state[1],len(state[1].asList())!=0, start=point1, goal=point2, warn=False, visualize=False)
-    return len(search.bfs(prob))
-
-class especialPositionSearchProblem(PositionSearchProblem):
-
-    def __init__(self,walls,pacmanPosition,food,hasFood,start,goal,warn=True,visualize=True):
-        self.food = food
-        self.hasFood = hasFood
-        self.goal = goal
-        # Store info for the PositionSearchProblem (no need to change this)
-        self.walls = walls
-        self.startState = start
-        self.visualize = visualize
-        self.warn = warn
-        self.costFn = lambda x: 1
-        self._visited, self._visitedlist, self._expanded = {}, [], 0  # DO NOT CHANGE
