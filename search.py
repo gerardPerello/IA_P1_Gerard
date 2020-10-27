@@ -117,9 +117,29 @@ problem - Problema en qüestió a resoldre.
 Funció que fa un push del node corresponent a l'estructura corresponent amb una heuristica i un problema determinats.
 """
 def priorityPush(node, estructure, heuristic, problem):
-    estructure.push(node, node[2] + heuristic(node[0], problem))
+    estructure.push(node, node[3] + heuristic(node[0], problem))
+
 
 """
+@author Gerard
+
+node - Node que s'ha d'introduir a l'estructura
+estructure - Estructura amb la qual treballem
+heuristic - Heuristica del problema.
+problem - Problema en qüestió a resoldre.
+
+Funció que fa un push del node corresponent a l'estructura corresponent amb una heuristica i un problema determinats.
+"""
+def priorityCostPush(node, estructure, heuristic, problem):
+    estructure.push(node, node[3])
+
+
+
+
+"""
+
+
+
 @author Gerard
 problem - Arbre a recorrer, en aquest cas es el mapa del pacman
 structure - Definirà el tipus d'estructura que farem servir per aquesta funció, per exemple: dfs li pasarà un Stack i bfs una Queue
@@ -141,13 +161,12 @@ def similarSearch(problem, structure, funcioPush=onlyPush, heuristic=nullHeurist
     primer = problem.getStartState()
     estructura = structure()
     dicVisitats = dict()
-    funcioPush((primer, "noPare", "noDireccio", 0), estructura)
+    funcioPush((primer, "noPare", "noDireccio", 0), estructura,heuristic,problem)
     llistaMoviments = []
 
     while not estructura.isEmpty():
 
         nodeActual, nodePare, direccioPareActual, costActual = estructura.pop()
-
         if problem.isGoalState(nodeActual):
 
             llistaMoviments.append(direccioPareActual)
@@ -169,8 +188,7 @@ def similarSearch(problem, structure, funcioPush=onlyPush, heuristic=nullHeurist
             dicVisitats[nodeActual] = (nodePare, direccioPareActual)
 
             for nodeFill in problem.getSuccessors(nodeActual):
-                funcioPush((nodeFill[0], nodeActual, nodeFill[1], costActual + nodeFill[2]), estructura, heuristic,
-                           problem)
+                funcioPush((nodeFill[0], nodeActual, nodeFill[1], costActual + nodeFill[2]), estructura, heuristic,problem)
     return llistaMoviments
 
 """
@@ -197,21 +215,12 @@ def breadthFirstSearch(problem):
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"
-    ne = 2
-    util.raiseNotDefined()
-
-
-def nullHeuristic(state, problem=None):
-    """
-    A heuristic function estimates the cost from the current state to the nearest
-    goal in the provided SearchProblem.  This heuristic is trivial.
-    """
-    return 0
+    return similarSearch(problem,util.PriorityQueue,priorityPush)
 
 
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
-    "*** YOUR CODE HERE ***"
+    return similarSearch(problem,util.PriorityQueue,priorityPush,heuristic)
 
 
 # Abbreviations
